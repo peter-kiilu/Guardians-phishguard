@@ -38,7 +38,7 @@ pip install -r requirements.txt
 python train_model.py
 
 # Start the FastAPI server
-uvicorn main:app --reload
+python -m uvicorn main:app --reload
 ```
 
 _The server will run at `http://localhost:8000`._

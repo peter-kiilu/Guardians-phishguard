@@ -23,8 +23,11 @@ EMAIL_VECTORIZER_PATH = "email_vectorizer.pkl"
 def load_urls_from_csv(filepath):
     """
     Load URLs from phishing_urls.csv.
-    Format: first line is header 'label,url', remaining lines are just URLs.
-    Safe URLs use https://, phishing URLs use http://.
+        Format: first line is header 'label,url'.
+        Each subsequent line can be either:
+            - Two columns: <label>,<url>
+            - Single column: <url>
+        Safe URLs use https://, phishing URLs use http://.
     """
     safe_urls = []
     phishing_urls = []
@@ -33,7 +36,9 @@ def load_urls_from_csv(filepath):
         lines = f.readlines()
 
     for line in lines[1:]:  # Skip header
-        url = line.strip()
+        # Support both "label,url" rows and plain URL rows
+        parts = [p.strip() for p in line.split(",", 1)]
+        url = parts[1] if len(parts) == 2 else parts[0]
         if not url:
             continue
         # Phishing URLs in this dataset start with http:// (not https://)
