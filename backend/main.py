@@ -5,6 +5,7 @@ from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from feature_extractor import extract_features, get_feature_vector
+from email_analyzer import analyze_email
 from urllib.parse import urlparse
 
 # Configure Logging
@@ -43,6 +44,17 @@ class PredictionResponse(BaseModel):
     confidence: float
     ml_probability: float
     heuristic_score: int
+
+class EmailAnalysisRequest(BaseModel):
+    subject: str = ""
+    sender: str = ""
+    snippet: str = ""
+
+class EmailAnalysisResponse(BaseModel):
+    prediction: str
+    confidence: float
+    ml_probability: float
+    details: str
 
 def apply_heuristics(url, features):
     """
@@ -116,6 +128,26 @@ async def predict(request: PredictionRequest):
         }
     except Exception as e:
         logger.error(f"Prediction error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/analyze-email", response_model=EmailAnalysisResponse)
+async def analyze_email_endpoint(request: EmailAnalysisRequest):
+    """Analyze email content for phishing using the trained email ML model."""
+    try:
+        result = analyze_email(
+            subject=request.subject,
+            sender=request.sender,
+            snippet=request.snippet
+        )
+
+        logger.info(
+            f"Email Analysis | Subject: {request.subject[:50]}... | "
+            f"Prediction: {result['prediction']} | Confidence: {result['confidence']}%"
+        )
+
+        return result
+    except Exception as e:
+        logger.error(f"Email analysis error: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 if __name__ == "__main__":

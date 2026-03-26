@@ -1,0 +1,158 @@
+/* ============================================================
+   PhishGuard — Gmail-specific warning styles
+   Injected only on mail.google.com
+   ============================================================ */
+
+/* Flagged email row — red left-border highlight */
+.phishguard-flagged {
+  border-left: 4px solid #ff2244 !important;
+  background-color: rgba(255, 34, 68, 0.06) !important;
+  position: relative;
+}
+
+.phishguard-flagged:hover {
+  background-color: rgba(255, 34, 68, 0.10) !important;
+}
+
+/* Warning badge appended inside the email row */
+.phishguard-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: linear-gradient(135deg, #ff2244, #d32f2f);
+  color: #fff;
+  font-size: 11px;
+  font-weight: 700;
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  padding: 2px 8px;
+  border-radius: 10px;
+  margin-left: 8px;
+  cursor: pointer;
+  white-space: nowrap;
+  letter-spacing: 0.3px;
+  box-shadow: 0 1px 4px rgba(255, 34, 68, 0.35);
+  animation: phishguard-badge-pop 0.3s ease-out;
+  position: relative;
+  vertical-align: middle;
+  z-index: 9999;
+}
+
+.phishguard-badge::before {
+  content: "⚠";
+  font-size: 12px;
+}
+
+@keyframes phishguard-badge-pop {
+  0% {
+    opacity: 0;
+    transform: scale(0.7);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+/* Tooltip — shown on badge hover */
+.phishguard-tooltip {
+  display: none;
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 0;
+  min-width: 280px;
+  max-width: 360px;
+  background: #1a1a2e;
+  color: #e0e0e8;
+  border: 1px solid rgba(255, 34, 68, 0.4);
+  border-radius: 8px;
+  padding: 12px 14px;
+  font-size: 12px;
+  font-weight: 400;
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  line-height: 1.5;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+  z-index: 2147483647;
+  white-space: normal;
+  word-wrap: break-word;
+}
+
+.phishguard-badge:hover .phishguard-tooltip {
+  display: block;
+}
+
+.phishguard-tooltip-header {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  font-weight: 700;
+  color: #ff2244;
+  margin-bottom: 8px;
+  padding-bottom: 6px;
+  border-bottom: 1px solid rgba(255, 34, 68, 0.2);
+}
+
+.phishguard-tooltip-header::before {
+  content: "🛡️";
+  font-size: 14px;
+}
+
+.phishguard-tooltip-reason {
+  margin: 4px 0;
+  padding-left: 12px;
+  position: relative;
+  color: #c0c0d0;
+}
+
+.phishguard-tooltip-reason::before {
+  content: "•";
+  position: absolute;
+  left: 0;
+  color: #ff2244;
+  font-weight: bold;
+}
+
+.phishguard-tooltip-domain {
+  color: #ff8a80;
+  font-family: 'Consolas', 'Courier New', monospace;
+  font-size: 11px;
+  background: rgba(255, 34, 68, 0.1);
+  padding: 1px 4px;
+  border-radius: 3px;
+}
+
+/* Gmail scan status indicator (bottom-right corner) */
+.phishguard-scan-status {
+  position: fixed;
+  bottom: 20px;
+  right: 20px;
+  background: linear-gradient(135deg, #1a1a2e, #16213e);
+  color: #e0e0e8;
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  font-size: 12px;
+  padding: 10px 16px;
+  border-radius: 8px;
+  border: 1px solid rgba(255, 34, 68, 0.3);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3);
+  z-index: 2147483647;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  transition: opacity 0.4s ease, transform 0.4s ease;
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.phishguard-scan-status.phishguard-hidden {
+  opacity: 0;
+  transform: translateY(10px);
+  pointer-events: none;
+}
+
+.phishguard-scan-status-icon {
+  font-size: 16px;
+}
+
+.phishguard-scan-status-text strong {
+  color: #ff2244;
+}

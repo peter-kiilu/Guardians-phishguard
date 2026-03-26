@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
   "name": "PhishGuard",
-  "version": "1.0",
-  "description": "Real-time phishing detection using ML and heuristics.",
+  "version": "1.1",
+  "description": "Real-time phishing detection using ML, heuristics, and Gmail email scanning.",
   "permissions": [
     "tabs",
     "activeTab",
@@ -33,11 +33,23 @@
       "matches": ["<all_urls>"],
       "js": ["content.js"],
       "css": ["styles.css"]
+    },
+    {
+      "matches": [
+        "*://mail.google.com/*"
+      ],
+      "js": ["phishing_domains.js", "gmail_content.js"],
+      "css": ["gmail_styles.css"],
+      "run_at": "document_idle"
     }
   ],
   "web_accessible_resources": [
     {
-      "resources": ["styles.css", "warning.html"],
+      "resources": [
+        "styles.css",
+        "gmail_styles.css",
+        "warning.html"
+      ],
       "matches": ["<all_urls>"]
     }
   ]
