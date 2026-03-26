@@ -1,0 +1,186 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>PhishGuard — Real-Time Phishing Detection</title>
+    <meta
+      name="description"
+      content="PhishGuard uses machine learning and heuristic analysis to detect phishing URLs in real-time. Scan any URL instantly."
+    />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Share+Tech+Mono&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="css/styles.css" />
+  </head>
+  <body>
+    <!-- Matrix Rain Canvas -->
+    <canvas id="matrix-canvas"></canvas>
+
+    <!-- Scan Line Overlay -->
+    <div class="scanlines"></div>
+
+    <div class="container">
+      <!-- Header -->
+      <header class="header">
+        <div class="logo-section">
+          <h1 class="glitch" data-text="PHISHGUARD">PHISHGUARD</h1>
+          <p class="tagline">Real-Time Phishing Detection System</p>
+        </div>
+        <div class="status-bar">
+          <div class="status-indicator" id="status-indicator">
+            <span class="status-dot" id="status-dot"></span>
+            <span class="status-text" id="status-text">CHECKING...</span>
+          </div>
+          <span class="status-label">API STATUS</span>
+        </div>
+      </header>
+
+      <!-- Scanner Section -->
+      <section class="scanner-section">
+        <div class="scanner-card">
+          <div class="card-header">
+            <span class="card-icon">⌘</span>
+            <span class="card-title">URL SCANNER</span>
+            <div class="card-dots">
+              <span class="dot dot-red"></span>
+              <span class="dot dot-yellow"></span>
+              <span class="dot dot-green"></span>
+            </div>
+          </div>
+          <div class="card-body">
+            <div class="terminal-prompt">
+              <span class="prompt-symbol">▶</span>
+              <span class="prompt-label">phishguard@scan:~$</span>
+            </div>
+            <div class="input-row">
+              <input
+                type="url"
+                id="url-input"
+                class="url-input"
+                placeholder="Enter URL to analyze..."
+                autocomplete="off"
+                spellcheck="false"
+              />
+              <button id="scan-btn" class="scan-btn" disabled>
+                <span class="btn-text">SCAN</span>
+                <span class="btn-loader" id="btn-loader"></span>
+              </button>
+            </div>
+            <p class="input-hint" id="input-hint">
+              Paste any URL starting with http:// or https://
+            </p>
+          </div>
+        </div>
+      </section>
+
+      <!-- Results Section -->
+      <section
+        class="results-section"
+        id="results-section"
+        style="display: none"
+      >
+        <div class="results-card">
+          <div class="card-header">
+            <span class="card-icon">◈</span>
+            <span class="card-title">ANALYSIS RESULTS</span>
+          </div>
+          <div class="card-body results-body">
+            <!-- Risk Gauge -->
+            <div class="gauge-container">
+              <svg class="gauge-svg" viewBox="0 0 200 200">
+                <circle class="gauge-bg" cx="100" cy="100" r="85" />
+                <circle
+                  class="gauge-fill"
+                  id="gauge-fill"
+                  cx="100"
+                  cy="100"
+                  r="85"
+                />
+              </svg>
+              <div class="gauge-center">
+                <span class="gauge-value" id="gauge-value">0</span>
+                <span class="gauge-unit">%</span>
+              </div>
+              <p class="gauge-label">RISK SCORE</p>
+            </div>
+
+            <!-- Verdict & Details -->
+            <div class="details-container">
+              <div class="verdict-box" id="verdict-box">
+                <span class="verdict-icon" id="verdict-icon">●</span>
+                <span class="verdict-text" id="verdict-text">—</span>
+              </div>
+              <div class="scanned-url" id="scanned-url"></div>
+              <div class="metrics-grid">
+                <div class="metric-card">
+                  <span class="metric-label">ML PROBABILITY</span>
+                  <span class="metric-value" id="ml-prob">—</span>
+                </div>
+                <div class="metric-card">
+                  <span class="metric-label">HEURISTIC SCORE</span>
+                  <span class="metric-value" id="h-score">—</span>
+                </div>
+                <div class="metric-card">
+                  <span class="metric-label">CONFIDENCE</span>
+                  <span class="metric-value" id="confidence">—</span>
+                </div>
+                <div class="metric-card">
+                  <span class="metric-label">VERDICT</span>
+                  <span class="metric-value" id="verdict-label">—</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- History Section -->
+      <section
+        class="history-section"
+        id="history-section"
+        style="display: none"
+      >
+        <div class="history-card">
+          <div class="card-header">
+            <span class="card-icon">⧉</span>
+            <span class="card-title">SCAN HISTORY</span>
+            <button
+              class="clear-btn"
+              id="clear-history-btn"
+              title="Clear History"
+            >
+              ✕ CLEAR
+            </button>
+          </div>
+          <div class="card-body">
+            <div class="table-wrapper">
+              <table class="history-table">
+                <thead>
+                  <tr>
+                    <th>TIME</th>
+                    <th>URL</th>
+                    <th>VERDICT</th>
+                    <th>RISK</th>
+                  </tr>
+                </thead>
+                <tbody id="history-body"></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Footer -->
+      <footer class="footer">
+        <p>PhishGuard v1.0 — ML-Powered Phishing Detection</p>
+        <p class="footer-sub">Educational & Portfolio Project</p>
+      </footer>
+    </div>
+
+    <script src="js/app.js"></script>
+  </body>
+</html>
