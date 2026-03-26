@@ -2,31 +2,32 @@
    PHISHGUARD — FRONTEND APPLICATION
    ============================================================ */
 
-const API_BASE = 'http://localhost:8000';
+const API_BASE = "http://localhost:8000";
 const GAUGE_CIRCUMFERENCE = 534.07; // 2 * π * 85
 
 // DOM Elements
-const urlInput       = document.getElementById('url-input');
-const scanBtn        = document.getElementById('scan-btn');
-const inputHint      = document.getElementById('input-hint');
-const statusDot      = document.getElementById('status-dot');
-const statusText     = document.getElementById('status-text');
-const resultsSection = document.getElementById('results-section');
-const historySection = document.getElementById('history-section');
-const historyBody    = document.getElementById('history-body');
-const clearHistoryBtn = document.getElementById('clear-history-btn');
+const urlInput = document.getElementById("url-input");
+const contentTypeSelect = document.getElementById("content-type-select");
+const scanBtn = document.getElementById("scan-btn");
+const inputHint = document.getElementById("input-hint");
+const statusDot = document.getElementById("status-dot");
+const statusText = document.getElementById("status-text");
+const resultsSection = document.getElementById("results-section");
+const historySection = document.getElementById("history-section");
+const historyBody = document.getElementById("history-body");
+const clearHistoryBtn = document.getElementById("clear-history-btn");
 
 // Gauge elements
-const gaugeFill    = document.getElementById('gauge-fill');
-const gaugeValue   = document.getElementById('gauge-value');
-const verdictBox   = document.getElementById('verdict-box');
-const verdictIcon  = document.getElementById('verdict-icon');
-const verdictText  = document.getElementById('verdict-text');
-const scannedUrl   = document.getElementById('scanned-url');
-const mlProb       = document.getElementById('ml-prob');
-const hScore       = document.getElementById('h-score');
-const confidence   = document.getElementById('confidence');
-const verdictLabel = document.getElementById('verdict-label');
+const gaugeFill = document.getElementById("gauge-fill");
+const gaugeValue = document.getElementById("gauge-value");
+const verdictBox = document.getElementById("verdict-box");
+const verdictIcon = document.getElementById("verdict-icon");
+const verdictText = document.getElementById("verdict-text");
+const scannedUrl = document.getElementById("scanned-url");
+const mlProb = document.getElementById("ml-prob");
+const hScore = document.getElementById("h-score");
+const confidence = document.getElementById("confidence");
+const verdictLabel = document.getElementById("verdict-label");
 
 let scanHistory = [];
 
@@ -35,18 +36,20 @@ let scanHistory = [];
    ============================================================ */
 async function checkBackendStatus() {
   try {
-    const res = await fetch(`${API_BASE}/`, { signal: AbortSignal.timeout(3000) });
+    const res = await fetch(`${API_BASE}/`, {
+      signal: AbortSignal.timeout(3000),
+    });
     if (res.ok) {
-      statusDot.className = 'status-dot online';
-      statusText.textContent = 'ONLINE';
+      statusDot.className = "status-dot online";
+      statusText.textContent = "ONLINE";
       scanBtn.disabled = false;
       return true;
     }
   } catch (_) {
     // fall through
   }
-  statusDot.className = 'status-dot offline';
-  statusText.textContent = 'OFFLINE';
+  statusDot.className = "status-dot offline";
+  statusText.textContent = "OFFLINE";
   scanBtn.disabled = true;
   return false;
 }
@@ -58,79 +61,111 @@ setInterval(checkBackendStatus, 10000);
 /* ============================================================
    INPUT VALIDATION
    ============================================================ */
-function isValidUrl(str) {
-  try {
-    const url = new URL(str);
-    return url.protocol === 'http:' || url.protocol === 'https:';
-  } catch {
-    return false;
+
+function isValidInput(str, type) {
+  if (type === "url") {
+    try {
+      const url = new URL(str);
+      return url.protocol === "http:" || url.protocol === "https:";
+    } catch {
+      return false;
+    }
+  } else if (type === "email") {
+    // Accept any non-empty string for email (could add more checks)
+    return str.trim().length > 0;
+  }
+  return false;
+}
+
+function updateInputHint() {
+  const val = urlInput.value.trim();
+  const type = contentTypeSelect.value;
+  if (val === "") {
+    urlInput.classList.remove("error");
+    inputHint.textContent =
+      type === "url"
+        ? "Paste any URL starting with http:// or https://"
+        : "Paste the email text you want to check";
+    inputHint.classList.remove("error");
+    scanBtn.disabled = statusDot.classList.contains("offline");
+  } else if (!isValidInput(val, type)) {
+    urlInput.classList.add("error");
+    inputHint.textContent =
+      type === "url"
+        ? "⚠ Invalid URL — must start with http:// or https://"
+        : "⚠ Please paste the email content to scan";
+    inputHint.classList.add("error");
+    scanBtn.disabled = true;
+  } else {
+    urlInput.classList.remove("error");
+    inputHint.textContent = "Press SCAN or hit Enter to analyze";
+    inputHint.classList.remove("error");
+    scanBtn.disabled = false;
   }
 }
 
-urlInput.addEventListener('input', () => {
-  const val = urlInput.value.trim();
-  if (val === '') {
-    urlInput.classList.remove('error');
-    inputHint.textContent = 'Paste any URL starting with http:// or https://';
-    inputHint.classList.remove('error');
-    scanBtn.disabled = statusDot.classList.contains('offline');
-  } else if (!isValidUrl(val)) {
-    urlInput.classList.add('error');
-    inputHint.textContent = '⚠ Invalid URL — must start with http:// or https://';
-    inputHint.classList.add('error');
-    scanBtn.disabled = true;
+urlInput.addEventListener("input", updateInputHint);
+contentTypeSelect.addEventListener("change", () => {
+  // Change placeholder and clear input
+  if (contentTypeSelect.value === "url") {
+    urlInput.placeholder = "Enter URL to analyze...";
   } else {
-    urlInput.classList.remove('error');
-    inputHint.textContent = 'Press SCAN or hit Enter to analyze';
-    inputHint.classList.remove('error');
-    scanBtn.disabled = false;
+    urlInput.placeholder = "Paste email content to analyze...";
   }
+  urlInput.value = "";
+  updateInputHint();
 });
+updateInputHint();
 
-urlInput.addEventListener('keydown', (e) => {
-  if (e.key === 'Enter' && !scanBtn.disabled) {
+urlInput.addEventListener("keydown", (e) => {
+  if (e.key === "Enter" && !scanBtn.disabled) {
     handleScan();
   }
 });
 
-scanBtn.addEventListener('click', handleScan);
+scanBtn.addEventListener("click", handleScan);
 
 /* ============================================================
    SCAN HANDLER
    ============================================================ */
 async function handleScan() {
-  const url = urlInput.value.trim();
-  if (!isValidUrl(url)) return;
+  const content = urlInput.value.trim();
+  const contentType = contentTypeSelect.value;
+  if (!isValidInput(content, contentType)) return;
 
   // UI: scanning state
-  scanBtn.classList.add('scanning');
+  scanBtn.classList.add("scanning");
   scanBtn.disabled = true;
   urlInput.disabled = true;
+  contentTypeSelect.disabled = true;
 
   try {
     const res = await fetch(`${API_BASE}/predict`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ url }),
-      signal: AbortSignal.timeout(8000)
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        content,
+        content_type: contentType,
+      }),
+      signal: AbortSignal.timeout(8000),
     });
 
     if (!res.ok) {
-      const err = await res.json().catch(() => ({ detail: 'Server error' }));
+      const err = await res.json().catch(() => ({ detail: "Server error" }));
       throw new Error(err.detail || `HTTP ${res.status}`);
     }
 
     const data = await res.json();
-    renderResults(url, data);
-    addToHistory(url, data);
-
+    renderResults(content, data, contentType);
+    addToHistory(content, data, contentType);
   } catch (err) {
     inputHint.textContent = `⚠ Error: ${err.message}`;
-    inputHint.classList.add('error');
+    inputHint.classList.add("error");
   } finally {
-    scanBtn.classList.remove('scanning');
+    scanBtn.classList.remove("scanning");
     scanBtn.disabled = false;
     urlInput.disabled = false;
+    contentTypeSelect.disabled = false;
     urlInput.focus();
   }
 }
@@ -139,17 +174,17 @@ async function handleScan() {
    RENDER RESULTS
    ============================================================ */
 function renderResults(url, data) {
-  resultsSection.style.display = '';
+  resultsSection.style.display = "";
 
-  const isPhishing = data.prediction === 'phishing';
+  const isPhishing = data.prediction === "phishing";
   const risk = data.confidence;
 
   // --- Gauge animation ---
-  const offset = GAUGE_CIRCUMFERENCE - (GAUGE_CIRCUMFERENCE * risk / 100);
+  const offset = GAUGE_CIRCUMFERENCE - (GAUGE_CIRCUMFERENCE * risk) / 100;
   gaugeFill.style.strokeDashoffset = offset;
 
   // Color based on risk
-  const gaugeColor = risk > 60 ? '#ff2244' : risk > 30 ? '#ffe600' : '#39ff14';
+  const gaugeColor = risk > 60 ? "#ff2244" : risk > 30 ? "#ffe600" : "#39ff14";
   gaugeFill.style.stroke = gaugeColor;
   gaugeValue.style.color = gaugeColor;
 
@@ -157,9 +192,9 @@ function renderResults(url, data) {
   animateCounter(gaugeValue, risk);
 
   // --- Verdict ---
-  verdictBox.className = `verdict-box ${isPhishing ? 'phishing' : 'safe'}`;
-  verdictIcon.textContent = isPhishing ? '🔴' : '🟢';
-  verdictText.textContent = isPhishing ? 'PHISHING DETECTED' : 'SAFE';
+  verdictBox.className = `verdict-box ${isPhishing ? "phishing" : "safe"}`;
+  verdictIcon.textContent = isPhishing ? "🔴" : "🟢";
+  verdictText.textContent = isPhishing ? "PHISHING DETECTED" : "SAFE";
 
   // --- Scanned URL ---
   scannedUrl.textContent = url;
@@ -169,10 +204,10 @@ function renderResults(url, data) {
   hScore.textContent = `+${data.heuristic_score}`;
   confidence.textContent = `${data.confidence}%`;
   verdictLabel.textContent = data.prediction.toUpperCase();
-  verdictLabel.style.color = isPhishing ? '#ff2244' : '#39ff14';
+  verdictLabel.style.color = isPhishing ? "#ff2244" : "#39ff14";
 
   // Scroll to results
-  resultsSection.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  resultsSection.scrollIntoView({ behavior: "smooth", block: "nearest" });
 }
 
 function animateCounter(el, target) {
@@ -200,7 +235,7 @@ function addToHistory(url, data) {
     time: new Date().toLocaleTimeString(),
     url,
     prediction: data.prediction,
-    confidence: data.confidence
+    confidence: data.confidence,
   };
   scanHistory.unshift(entry);
 
@@ -212,22 +247,27 @@ function addToHistory(url, data) {
 
 function renderHistory() {
   if (scanHistory.length === 0) {
-    historySection.style.display = 'none';
+    historySection.style.display = "none";
     return;
   }
 
-  historySection.style.display = '';
-  historyBody.innerHTML = '';
+  historySection.style.display = "";
+  historyBody.innerHTML = "";
 
   scanHistory.forEach((entry) => {
-    const tr = document.createElement('tr');
-    const isPhishing = entry.prediction === 'phishing';
-    const barColor = entry.confidence > 60 ? '#ff2244' : entry.confidence > 30 ? '#ffe600' : '#39ff14';
+    const tr = document.createElement("tr");
+    const isPhishing = entry.prediction === "phishing";
+    const barColor =
+      entry.confidence > 60
+        ? "#ff2244"
+        : entry.confidence > 30
+          ? "#ffe600"
+          : "#39ff14";
 
     tr.innerHTML = `
       <td>${entry.time}</td>
       <td><span class="history-url" title="${escapeHtml(entry.url)}">${escapeHtml(entry.url)}</span></td>
-      <td><span class="badge ${isPhishing ? 'phishing' : 'safe'}">${entry.prediction.toUpperCase()}</span></td>
+      <td><span class="badge ${isPhishing ? "phishing" : "safe"}">${entry.prediction.toUpperCase()}</span></td>
       <td class="risk-bar-cell">
         <div class="risk-bar-bg">
           <div class="risk-bar-fill" style="width:${entry.confidence}%; background:${barColor}"></div>
@@ -238,14 +278,14 @@ function renderHistory() {
   });
 }
 
-clearHistoryBtn.addEventListener('click', () => {
+clearHistoryBtn.addEventListener("click", () => {
   scanHistory = [];
   renderHistory();
-  resultsSection.style.display = 'none';
+  resultsSection.style.display = "none";
 });
 
 function escapeHtml(str) {
-  const div = document.createElement('div');
+  const div = document.createElement("div");
   div.textContent = str;
   return div.innerHTML;
 }
@@ -254,32 +294,33 @@ function escapeHtml(str) {
    MATRIX RAIN BACKGROUND
    ============================================================ */
 function initMatrixRain() {
-  const canvas = document.getElementById('matrix-canvas');
-  const ctx = canvas.getContext('2d');
+  const canvas = document.getElementById("matrix-canvas");
+  const ctx = canvas.getContext("2d");
 
   function resize() {
     canvas.width = window.innerWidth;
     canvas.height = window.innerHeight;
   }
   resize();
-  window.addEventListener('resize', resize);
+  window.addEventListener("resize", resize);
 
-  const chars = 'アイウエオカキクケコサシスセソタチツテトナニヌネノハヒフヘホマミムメモヤユヨラリルレロワヰヱヲン0123456789ABCDEF<>/{}[]|';
-  const charArr = chars.split('');
+  const chars =
+    "アイウエオカキクケコサシスセソタチツテトナニヌネノハヒフヘホマミムメモヤユヨラリルレロワヰヱヲン0123456789ABCDEF<>/{}[]|";
+  const charArr = chars.split("");
   const fontSize = 14;
   let columns = Math.floor(canvas.width / fontSize);
   let drops = new Array(columns).fill(1);
 
-  window.addEventListener('resize', () => {
+  window.addEventListener("resize", () => {
     columns = Math.floor(canvas.width / fontSize);
     drops = new Array(columns).fill(1);
   });
 
   function draw() {
-    ctx.fillStyle = 'rgba(10, 10, 15, 0.08)';
+    ctx.fillStyle = "rgba(10, 10, 15, 0.08)";
     ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-    ctx.fillStyle = '#00f0ff';
+    ctx.fillStyle = "#00f0ff";
     ctx.font = `${fontSize}px monospace`;
 
     for (let i = 0; i < drops.length; i++) {

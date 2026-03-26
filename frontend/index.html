@@ -57,8 +57,12 @@
               <span class="prompt-label">phishguard@scan:~$</span>
             </div>
             <div class="input-row">
+              <select id="content-type-select" class="content-type-select">
+                <option value="url">Website Link</option>
+                <option value="email">Email</option>
+              </select>
               <input
-                type="url"
+                type="text"
                 id="url-input"
                 class="url-input"
                 placeholder="Enter URL to analyze..."
