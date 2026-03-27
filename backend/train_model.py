@@ -31,7 +31,7 @@ def load_urls_from_csv(filepath):
     with open(filepath, "r", encoding="utf-8") as f:
         lines = f.readlines()
 
-    for line in lines[1:]:  # Skip header
+    for line in lines[1:]:  # Skip headers
         url = line.strip()
         if not url:
             continue
@@ -76,7 +76,7 @@ def train_url_model():
     return model
 
 
-#  Email Model — trained from emails.csv
+#  Email models trained from emails.csv
 def load_emails_from_csv(filepath):
     """
     Load emails from emails.csv.

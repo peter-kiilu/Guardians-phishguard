@@ -8,7 +8,7 @@ WORKDIR /app
 COPY backend/requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Copy backend source code
+# Copy backend
 COPY backend/ .
 
 EXPOSE 8000

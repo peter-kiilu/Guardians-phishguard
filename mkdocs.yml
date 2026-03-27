@@ -6,7 +6,7 @@ site_author: Team Guardians
 theme:
   name: material
   palette:
-    # Palette toggle for light mode
+    # Palette toggle light mode
     - media: "(prefers-color-scheme: light)"
       scheme: default
       primary: indigo
@@ -14,7 +14,7 @@ theme:
       toggle:
         icon: material/brightness-7
         name: Switch to dark mode
-    # Palette toggle for dark mode
+    # Palette toggle dark mode
     - media: "(prefers-color-scheme: dark)"
       scheme: slate
       primary: indigo
