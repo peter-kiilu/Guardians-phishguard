@@ -1,4 +1,4 @@
-/* ============================================================
+﻿/* ============================================================
    PHISHGUARD — FRONTEND APPLICATION
    ============================================================ */
 
@@ -13,21 +13,19 @@ const inputHint = document.getElementById("input-hint");
 const statusDot = document.getElementById("status-dot");
 const statusText = document.getElementById("status-text");
 const resultsSection = document.getElementById("results-section");
-const historySection = document.getElementById("history-section");
-const historyBody = document.getElementById("history-body");
-const clearHistoryBtn = document.getElementById("clear-history-btn");
+
+// Helper to wait for DOM - ensuring no null style errors
+const getEl = (id) => document.getElementById(id);
 
 // Gauge elements
-const gaugeFill = document.getElementById("gauge-fill");
-const gaugeValue = document.getElementById("gauge-value");
-const verdictBox = document.getElementById("verdict-box");
-const verdictIcon = document.getElementById("verdict-icon");
-const verdictText = document.getElementById("verdict-text");
-const scannedUrl = document.getElementById("scanned-url");
-const mlProb = document.getElementById("ml-prob");
-const hScore = document.getElementById("h-score");
-const confidence = document.getElementById("confidence");
-const verdictLabel = document.getElementById("verdict-label");
+const gaugeFill = getEl("gauge-fill");
+const gaugeValue = getEl("gauge-value");
+const verdictBox = getEl("verdict-box");
+const verdictText = getEl("verdict-text");
+const scannedUrl = getEl("scanned-url");
+const mlProb = getEl("ml-prob");
+const hScore = getEl("h-score");
+const verdictLabel = getEl("verdict-label");
 
 let scanHistory = [];
 
@@ -40,16 +38,18 @@ async function checkBackendStatus() {
       signal: AbortSignal.timeout(3000),
     });
     if (res.ok) {
-      statusDot.className = "status-dot online";
+      statusDot.className = "w-2 h-2 rounded-full bg-emerald-400 shadow-[0_0_10px_rgba(16,185,129,0.5)]";
       statusText.textContent = "ONLINE";
+      statusText.className = "text-[10px] font-bold uppercase tracking-widest text-emerald-500";
       scanBtn.disabled = false;
       return true;
     }
   } catch (_) {
     // fall through
   }
-  statusDot.className = "status-dot offline";
+  statusDot.className = "w-2 h-2 rounded-full bg-red-400";
   statusText.textContent = "OFFLINE";
+  statusText.className = "text-[10px] font-bold uppercase tracking-widest text-red-500";
   scanBtn.disabled = true;
   return false;
 }
@@ -71,7 +71,6 @@ function isValidInput(str, type) {
       return false;
     }
   } else if (type === "email") {
-    // Accept any non-empty string for email (could add more checks)
     return str.trim().length > 0;
   }
   return false;
@@ -80,33 +79,26 @@ function isValidInput(str, type) {
 function updateInputHint() {
   const val = urlInput.value.trim();
   const type = contentTypeSelect.value;
-  if (val === "") {
-    urlInput.classList.remove("error");
-    inputHint.textContent =
-      type === "url"
-        ? "Paste any URL starting with http:// or https://"
-        : "Paste the email text you want to check";
-    inputHint.classList.remove("error");
-    scanBtn.disabled = statusDot.classList.contains("offline");
+  if (!val) {
+    urlInput.classList.remove("border-red-500", "bg-red-50");
+    inputHint.textContent = type === "url" ? "Paste any URL starting with http:// or https://" : "Paste the email text you want to check";
+    inputHint.className = "text-xs text-slate-400 px-2 italic";
+    scanBtn.disabled = statusText.textContent === "OFFLINE";
   } else if (!isValidInput(val, type)) {
-    urlInput.classList.add("error");
-    inputHint.textContent =
-      type === "url"
-        ? "⚠ Invalid URL — must start with http:// or https://"
-        : "⚠ Please paste the email content to scan";
-    inputHint.classList.add("error");
+    urlInput.classList.add("border-red-500", "bg-red-50");
+    inputHint.textContent = type === "url" ? "⚠ Invalid URL — must start with http:// or https://" : "⚠ Please paste the email content to scan";
+    inputHint.className = "text-xs text-red-500 px-2 font-bold";
     scanBtn.disabled = true;
   } else {
-    urlInput.classList.remove("error");
-    inputHint.textContent = "Press SCAN or hit Enter to analyze";
-    inputHint.classList.remove("error");
+    urlInput.classList.remove("border-red-500", "bg-red-50");
+    inputHint.textContent = "Ready to scan content.";
+    inputHint.className = "text-xs text-emerald-500 px-2 font-bold";
     scanBtn.disabled = false;
   }
 }
 
 urlInput.addEventListener("input", updateInputHint);
 contentTypeSelect.addEventListener("change", () => {
-  // Change placeholder and clear input
   if (contentTypeSelect.value === "url") {
     urlInput.placeholder = "Enter URL to analyze...";
   } else {
@@ -133,20 +125,19 @@ async function handleScan() {
   const contentType = contentTypeSelect.value;
   if (!isValidInput(content, contentType)) return;
 
-  // UI: scanning state
-  scanBtn.classList.add("scanning");
+  const btnText = document.getElementById("btn-text");
+  const btnLoader = document.getElementById("btn-loader");
+  if (btnText) btnText.classList.add("hidden");
+  if (btnLoader) btnLoader.classList.remove("hidden");
+  
   scanBtn.disabled = true;
   urlInput.disabled = true;
-  contentTypeSelect.disabled = true;
 
   try {
     const res = await fetch(`${API_BASE}/predict`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        content,
-        content_type: contentType,
-      }),
+      body: JSON.stringify({ content, content_type: contentType }),
       signal: AbortSignal.timeout(8000),
     });
 
@@ -156,16 +147,16 @@ async function handleScan() {
     }
 
     const data = await res.json();
-    renderResults(content, data, contentType);
-    addToHistory(content, data, contentType);
+    renderResults(content, data);
+    addToHistory(content, data);
   } catch (err) {
     inputHint.textContent = `⚠ Error: ${err.message}`;
-    inputHint.classList.add("error");
+    inputHint.className = "text-xs text-red-500 px-2 font-bold";
   } finally {
-    scanBtn.classList.remove("scanning");
+    if (btnText) btnText.classList.remove("hidden");
+    if (btnLoader) btnLoader.classList.add("hidden");
     scanBtn.disabled = false;
     urlInput.disabled = false;
-    contentTypeSelect.disabled = false;
     urlInput.focus();
   }
 }
@@ -174,62 +165,106 @@ async function handleScan() {
    RENDER RESULTS
    ============================================================ */
 function renderResults(url, data) {
-  resultsSection.style.display = "";
+  const section = getEl("results-section");
+  if (section) {
+    section.style.display = "grid";
+    section.classList.remove("hidden");
+  }
 
-  const isPhishing = data.prediction === "phishing";
+  const isPhishing = data.prediction === "phishing" || data.prediction === "Malicious";
   const risk = data.confidence;
 
-  // --- Gauge animation ---
-  const offset = GAUGE_CIRCUMFERENCE - (GAUGE_CIRCUMFERENCE * risk) / 100;
-  gaugeFill.style.strokeDashoffset = offset;
+  const gFill = getEl("gauge-fill");
+  if (gFill) {
+    const circumference = 502;
+    const offset = circumference - (circumference * risk) / 100;
+    gFill.style.strokeDasharray = "502";
+    gFill.style.strokeDashoffset = offset.toString();
+    gFill.style.stroke = risk > 60 ? "#ef4444" : risk > 30 ? "#f59e0b" : "#6367FF";
+  }
 
-  // Color based on risk
-  const gaugeColor = risk > 60 ? "#ff2244" : risk > 30 ? "#ffe600" : "#39ff14";
-  gaugeFill.style.stroke = gaugeColor;
-  gaugeValue.style.color = gaugeColor;
+  const gVal = getEl("gauge-value");
+  if (gVal) {
+    animateCounter(gVal, risk);
+    gVal.style.color = risk > 60 ? "#ef4444" : risk > 30 ? "#f59e0b" : "#6367FF";
+  }
 
-  // Animate counter
-  animateCounter(gaugeValue, risk);
+  const vBox = getEl("verdict-box");
+  if (vBox) {
+    vBox.className = `px-4 py-1.5 rounded-full text-xs font-bold uppercase tracking-widest ${isPhishing ? "bg-red-50 text-red-600 border border-red-200" : "bg-emerald-50 text-emerald-600 border border-emerald-200"}`;
+  }
+  const vText = getEl("verdict-text");
+  if (vText) vText.textContent = isPhishing ? "PHISHING DETECTED" : "SAFE";
 
-  // --- Verdict ---
-  verdictBox.className = `verdict-box ${isPhishing ? "phishing" : "safe"}`;
-  verdictIcon.textContent = isPhishing ? "🔴" : "🟢";
-  verdictText.textContent = isPhishing ? "PHISHING DETECTED" : "SAFE";
+  const sUrl = getEl("scanned-url");
+  if (sUrl) sUrl.textContent = url.length > 50 ? url.substring(0, 47) + "..." : url;
 
-  // --- Scanned URL ---
-  scannedUrl.textContent = url;
+  const mlProbEl = getEl("ml-prob");
+  const hScoreEl = getEl("h-score");
+  if (mlProbEl) mlProbEl.textContent = `${(data.ml_probability * 100).toFixed(0)}%`;
+  if (hScoreEl) hScoreEl.textContent = `+${data.heuristic_score}`;
 
-  // --- Metrics ---
-  mlProb.textContent = `${(data.ml_probability * 100).toFixed(1)}%`;
-  hScore.textContent = `+${data.heuristic_score}`;
-  confidence.textContent = `${data.confidence}%`;
-  verdictLabel.textContent = data.prediction.toUpperCase();
-  verdictLabel.style.color = isPhishing ? "#ff2244" : "#39ff14";
+  const vLabel = getEl("verdict-label");
+  if (vLabel) {
+    vLabel.textContent = isPhishing ? "THREAT" : "SECURE";
+    vLabel.style.color = isPhishing ? "#ef4444" : "#6367FF";
+  }
 
-  // Scroll to results
-  resultsSection.scrollIntoView({ behavior: "smooth", block: "nearest" });
+  const expText = getEl("explanation-text");
+  if (expText) {
+    expText.textContent = data.explanation || (isPhishing ? "This source appears dangerous. Proceed with extreme caution." : "No major threats found.");
+    expText.classList.remove("italic", "text-slate-400");
+  }
+
+  const keywordContainer = getEl("keyword-pills");
+  if (keywordContainer) {
+    keywordContainer.innerHTML = "";
+    const keywords = data.keywords || (isPhishing ? ["Urgent", "Verification", "Sensitive"] : ["Verified", "Secure", "Legit"]);
+    
+    keywords.forEach(word => {
+      const span = document.createElement("span");
+      span.className = "px-4 py-1.5 bg-primary/5 text-primary border border-primary/10 rounded-full text-[10px] font-black uppercase tracking-widest";
+      span.textContent = word;
+      keywordContainer.appendChild(span);
+    });
+  }
+
+  const recContainer = getEl("recommendations-container");
+  if (recContainer) {
+    recContainer.innerHTML = "";
+    const recs = data.recommendations || (isPhishing ? ["Do not click any links.", "Report this sender.", "Delete the email immediately."] : ["Continue with caution.", "Verify external links.", "Ensure 2FA is enabled."]);
+    recs.forEach((rec, idx) => {
+      const div = document.createElement("div");
+      div.className = "flex gap-4 items-start";
+      div.innerHTML = `
+        <div class="w-8 h-8 rounded-full bg-[#6367FF]/10 flex items-center justify-center shrink-0">
+          <span class="text-[#6367FF] text-xs font-bold">${String(idx + 1).padStart(2, '0')}</span>
+        </div>
+        <p class="text-sm font-medium text-slate-700">${rec}</p>
+      `;
+      recContainer.appendChild(div);
+    });
+  }
+
+  if (section) section.scrollIntoView({ behavior: "smooth", block: "nearest" });
 }
 
 function animateCounter(el, target) {
-  const duration = 1000;
+  const duration = 1200;
   const start = performance.now();
-  const from = 0;
+  const from = parseFloat(el.textContent) || 0;
 
   function tick(now) {
     const elapsed = now - start;
     const progress = Math.min(elapsed / duration, 1);
-    // Ease out cubic
     const eased = 1 - Math.pow(1 - progress, 3);
-    const current = Math.round(from + (target - from) * eased);
-    el.textContent = current;
+    const current = from + (target - from) * eased;
+    el.textContent = current.toFixed(current % 1 === 0 ? 0 : 2);
     if (progress < 1) requestAnimationFrame(tick);
   }
   requestAnimationFrame(tick);
 }
 
-/* ============================================================
-   SCAN HISTORY
-   ============================================================ */
 function addToHistory(url, data) {
   const entry = {
     time: new Date().toLocaleTimeString(),
@@ -238,103 +273,5 @@ function addToHistory(url, data) {
     confidence: data.confidence,
   };
   scanHistory.unshift(entry);
-
-  // Keep last 20
   if (scanHistory.length > 20) scanHistory.pop();
-
-  renderHistory();
 }
-
-function renderHistory() {
-  if (scanHistory.length === 0) {
-    historySection.style.display = "none";
-    return;
-  }
-
-  historySection.style.display = "";
-  historyBody.innerHTML = "";
-
-  scanHistory.forEach((entry) => {
-    const tr = document.createElement("tr");
-    const isPhishing = entry.prediction === "phishing";
-    const barColor =
-      entry.confidence > 60
-        ? "#ff2244"
-        : entry.confidence > 30
-          ? "#ffe600"
-          : "#39ff14";
-
-    tr.innerHTML = `
-      <td>${entry.time}</td>
-      <td><span class="history-url" title="${escapeHtml(entry.url)}">${escapeHtml(entry.url)}</span></td>
-      <td><span class="badge ${isPhishing ? "phishing" : "safe"}">${entry.prediction.toUpperCase()}</span></td>
-      <td class="risk-bar-cell">
-        <div class="risk-bar-bg">
-          <div class="risk-bar-fill" style="width:${entry.confidence}%; background:${barColor}"></div>
-        </div>
-      </td>
-    `;
-    historyBody.appendChild(tr);
-  });
-}
-
-clearHistoryBtn.addEventListener("click", () => {
-  scanHistory = [];
-  renderHistory();
-  resultsSection.style.display = "none";
-});
-
-function escapeHtml(str) {
-  const div = document.createElement("div");
-  div.textContent = str;
-  return div.innerHTML;
-}
-
-/* ============================================================
-   MATRIX RAIN BACKGROUND
-   ============================================================ */
-function initMatrixRain() {
-  const canvas = document.getElementById("matrix-canvas");
-  const ctx = canvas.getContext("2d");
-
-  function resize() {
-    canvas.width = window.innerWidth;
-    canvas.height = window.innerHeight;
-  }
-  resize();
-  window.addEventListener("resize", resize);
-
-  const chars =
-    "アイウエオカキクケコサシスセソタチツテトナニヌネノハヒフヘホマミムメモヤユヨラリルレロワヰヱヲン0123456789ABCDEF<>/{}[]|";
-  const charArr = chars.split("");
-  const fontSize = 14;
-  let columns = Math.floor(canvas.width / fontSize);
-  let drops = new Array(columns).fill(1);
-
-  window.addEventListener("resize", () => {
-    columns = Math.floor(canvas.width / fontSize);
-    drops = new Array(columns).fill(1);
-  });
-
-  function draw() {
-    ctx.fillStyle = "rgba(10, 10, 15, 0.08)";
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-    ctx.fillStyle = "#00f0ff";
-    ctx.font = `${fontSize}px monospace`;
-
-    for (let i = 0; i < drops.length; i++) {
-      const char = charArr[Math.floor(Math.random() * charArr.length)];
-      ctx.fillText(char, i * fontSize, drops[i] * fontSize);
-
-      if (drops[i] * fontSize > canvas.height && Math.random() > 0.975) {
-        drops[i] = 0;
-      }
-      drops[i]++;
-    }
-  }
-
-  setInterval(draw, 50);
-}
-
-initMatrixRain();

@@ -130,7 +130,8 @@ async def predict(request: PredictionRequest):
                 "ml_probability": round(ml_prob, 4),
                 "heuristic_score": h_score,
                 "explanation": explanation,
-                "recommendations": recommendations
+                "recommendations": recommendations,
+                "keywords": list(features.keys())[:5] # Adding some features as keywords for UI consistency
             }
         except Exception as e:
             logger.error(f"Prediction error: {e}")
@@ -172,7 +173,8 @@ async def predict(request: PredictionRequest):
             "ml_probability": 0.0,
             "heuristic_score": score,
             "explanation": explanation,
-            "recommendations": recommendations
+            "recommendations": recommendations,
+            "keywords": found_words
         }
     else:
         raise HTTPException(status_code=400, detail="Unsupported content_type. Use 'url' or 'email'.")

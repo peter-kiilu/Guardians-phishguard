@@ -32,7 +32,7 @@ async function analyzeUrl(tabId, url) {
       headers: {
         "Content-Type": "application/json"
       },
-      body: JSON.stringify({ url: url }),
+      body: JSON.stringify({ content: url, content_type: 'url' }),
       signal: controller.signal
     });
 
