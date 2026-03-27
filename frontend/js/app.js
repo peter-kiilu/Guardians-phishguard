@@ -1,6 +1,4 @@
-/* ============================================================
-   PHISHGUARD — FRONTEND APPLICATION
-   ============================================================ */
+/* PHISHGUARD — FRONTEND APPLICATION */
 
 const API_BASE = 'http://localhost:8000';
 const GAUGE_CIRCUMFERENCE = 534.07; // 2 * π * 85
@@ -276,21 +274,39 @@ function initMatrixRain() {
   });
 
   function draw() {
-    ctx.fillStyle = 'rgba(10, 10, 15, 0.08)';
+    // Minimal fade — characters persist much longer on screen
+    ctx.fillStyle = 'rgba(10, 10, 15, 0.02)';
     ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-    ctx.fillStyle = '#00f0ff';
-    ctx.font = `${fontSize}px monospace`;
+    ctx.font = `bold ${fontSize}px monospace`;
 
     for (let i = 0; i < drops.length; i++) {
       const char = charArr[Math.floor(Math.random() * charArr.length)];
+
+      // Lead character — pure white with intense glow
+      ctx.shadowBlur = 20;
+      ctx.shadowColor = '#00ff66';
+      ctx.fillStyle = '#ffffff';
       ctx.fillText(char, i * fontSize, drops[i] * fontSize);
+
+      // Trail character — bright neon green with glow
+      ctx.shadowBlur = 12;
+      ctx.shadowColor = '#00ff44';
+      ctx.fillStyle = '#00ff66';
+      ctx.fillText(char, i * fontSize, (drops[i] - 1) * fontSize);
+
+      // Extra trail for longer visible streaks
+      ctx.shadowBlur = 6;
+      ctx.fillStyle = '#00cc44';
+      ctx.fillText(char, i * fontSize, (drops[i] - 2) * fontSize);
 
       if (drops[i] * fontSize > canvas.height && Math.random() > 0.975) {
         drops[i] = 0;
       }
       drops[i]++;
     }
+
+    ctx.shadowBlur = 0;
   }
 
   setInterval(draw, 50);

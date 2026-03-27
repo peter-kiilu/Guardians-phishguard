@@ -13,6 +13,11 @@
   const LOG_PREFIX = "[PhishGuard Gmail]";
   const BACKEND_URL = "http://localhost:8000";
 
+  // Request background to close this tab
+  function closeCurrentTab() {
+    chrome.runtime.sendMessage({ action: "closeTab" });
+  }
+
   // ── Gmail DOM Selectors ──────────────────────────────────────
   // Gmail uses obfuscated class names. These are current as of 2025
   // and may need updating if Gmail changes its HTML structure.
@@ -24,6 +29,50 @@
     EMAIL_BODY_VIEW: ".a3s.aiL",         // Full email body (when opened)
     INBOX_TABLE: "table.F.cf.zt",        // The inbox table container
   };
+
+  // ── Trusted Sender Domains ───────────────────────────────────
+  // Emails from these domains are NOT flagged for urgency phrases alone.
+  // They can still be flagged if they contain phishing links or domains.
+  const TRUSTED_SENDERS = new Set([
+    "google.com",
+    "gmail.com",
+    "googlemail.com",
+    "accounts.google.com",
+    "microsoft.com",
+    "outlook.com",
+    "live.com",
+    "hotmail.com",
+    "apple.com",
+    "icloud.com",
+    "amazon.com",
+    "paypal.com",
+    "facebook.com",
+    "facebookmail.com",
+    "twitter.com",
+    "x.com",
+    "linkedin.com",
+    "github.com",
+    "netflix.com",
+    "spotify.com",
+    "youtube.com",
+    "yahoo.com",
+    "safaricom.co.ke",
+    "equity.co.ke",
+    "kcbgroup.com",
+  ]);
+
+  /**
+   * Check if a sender domain is trusted (legitimate service).
+   */
+  function isTrustedSender(domain) {
+    if (!domain) return false;
+    if (TRUSTED_SENDERS.has(domain)) return true;
+    // Check parent domain (e.g. "mail.google.com" → "google.com")
+    for (const trusted of TRUSTED_SENDERS) {
+      if (domain.endsWith("." + trusted)) return true;
+    }
+    return false;
+  }
 
   // ── Analysis Functions ───────────────────────────────────────
 
@@ -135,9 +184,10 @@
       reasons.push(`Sender domain <strong>${senderDomain}</strong> is a known phishing domain`);
     }
 
-    // ─ Check 2: Urgency phrases ─
+    // ─ Check 2: Urgency phrases (only flag if sender is NOT trusted) ─
     const urgencyMatches = findUrgencyPhrases(fullText);
-    if (urgencyMatches.length > 0) {
+    const senderIsTrusted = isTrustedSender(senderDomain);
+    if (urgencyMatches.length > 0 && !senderIsTrusted) {
       reasons.push(
         `Urgency phrases detected: "${urgencyMatches.slice(0, 3).join('", "')}"`
       );
@@ -201,13 +251,12 @@
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ subject, sender, snippet }),
-        signal: AbortSignal.timeout(3000),
+        signal: AbortSignal.timeout(5000),
       });
       if (!response.ok) return null;
       return await response.json();
     } catch (err) {
       // Backend may be offline — fail silently, local heuristics still work
-      console.log(`${LOG_PREFIX} Backend unavailable for email analysis:`, err.message);
       return null;
     }
   }
@@ -284,7 +333,7 @@
     const rows = document.querySelectorAll(SELECTORS.EMAIL_ROW);
     if (rows.length === 0) return;
 
-    console.log(`${LOG_PREFIX} Scanning ${rows.length} email rows...`);
+    // Silent scan — no console noise
 
     let flaggedCount = 0;
     const rowsToScan = [];
@@ -318,9 +367,9 @@
       if (analysis.flagged) {
         flaggedCount++;
         injectWarningBadge(row, analysis);
-        console.warn(
-          `${LOG_PREFIX} ⚠ FLAGGED: "${analysis.subject}" from ${analysis.sender}`,
-          analysis.reasons
+        // Log only in debug mode
+        console.debug(
+          `${LOG_PREFIX} Flagged: "${analysis.subject}" from ${analysis.sender}`
         );
       }
     });
@@ -337,7 +386,7 @@
       showScanStatus(`Scanned <strong>${totalScanned}</strong> emails — all clear ✓`, 0);
     }
 
-    console.log(`${LOG_PREFIX} Scan complete. ${flaggedCount} emails flagged.`);
+    // Silent completion
   }
 
   // ── Also scan currently-open email body ──────────────────────
@@ -347,27 +396,30 @@
     if (!bodyEl || bodyEl.dataset.phishguardBodyScanned === "true") return;
     bodyEl.dataset.phishguardBodyScanned = "true";
 
-    const reasons = [];
+    const hardReasons = [];   // Dangerous: phishing links, mismatched URLs
+    const softReasons = [];   // Suspicious: urgency phrases only
     const bodyText = bodyEl.textContent || "";
 
     // Check urgency phrases in body
     const urgencyMatches = findUrgencyPhrases(bodyText);
     if (urgencyMatches.length > 0) {
-      reasons.push(`Urgency phrases: "${urgencyMatches.slice(0, 5).join('", "')}"`);
+      softReasons.push(`Urgency phrases: "${urgencyMatches.slice(0, 5).join('", "')}"`);
     }
 
     // Check all links in the body
     const anchors = bodyEl.querySelectorAll("a[href]");
     anchors.forEach((a) => {
       const domain = getDomain(a.href);
+      // Skip google.com internal links
+      if (isTrustedSender(domain)) return;
       if (isPhishingDomain(domain)) {
-        reasons.push(`Link to phishing domain: ${domain}`);
+        hardReasons.push(`Link to phishing domain: ${domain}`);
         a.style.outline = "2px solid #ff2244";
         a.style.outlineOffset = "2px";
         a.title = `⚠ PhishGuard: Known phishing domain (${domain})`;
       }
       if (isUrlShortener(domain)) {
-        reasons.push(`Shortened URL: ${domain}`);
+        hardReasons.push(`Shortened URL: ${domain}`);
         a.style.outline = "2px dashed #ff8a00";
         a.style.outlineOffset = "2px";
         a.title = `⚠ PhishGuard: Shortened URL — destination hidden (${domain})`;
@@ -377,22 +429,161 @@
     // Check for mismatched links
     const mismatched = findMismatchedLinks(bodyEl);
     mismatched.forEach((m) => {
-      reasons.push(`Mismatched link: displays "${m.display}" but goes to "${m.actual}"`);
+      if (!isTrustedSender(m.actual)) {
+        hardReasons.push(`Mismatched link: displays "${m.display}" but goes to "${m.actual}"`);
+      }
     });
 
-    if (reasons.length > 0) {
-      console.warn(`${LOG_PREFIX} ⚠ Open email body flagged:`, reasons);
+    const allReasons = [...hardReasons, ...softReasons];
+
+    // Only block if there are HARD reasons (phishing links, mismatched URLs)
+    if (hardReasons.length > 0) {
+      showPhishingBlockOverlay(allReasons);
+    } else if (softReasons.length > 0) {
+      // Soft warning: just show the status bar, don't block
       showScanStatus(
-        `Email body flagged — <strong style="color:#ff2244">${reasons.length} issue(s)</strong>`,
-        reasons.length
+        `Email has suspicious language — <strong style="color:#ff8a00">${softReasons.length} warning(s)</strong>`,
+        softReasons.length
       );
     }
+  }
+
+  // ── Phishing Block Overlay ──────────────────────────────────
+
+  /**
+   * Show a full-screen blocking overlay when a phishing email is opened.
+   * Forces the user to go back to inbox or dismiss.
+   */
+  function showPhishingBlockOverlay(reasons) {
+    // Don't double-inject
+    if (document.getElementById("phishguard-block-overlay")) return;
+
+    const overlay = document.createElement("div");
+    overlay.id = "phishguard-block-overlay";
+    overlay.style.cssText = `
+      position: fixed;
+      top: 0; left: 0; right: 0; bottom: 0;
+      z-index: 999999;
+      background: rgba(10, 0, 0, 0.95);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      animation: phishguardFadeIn 0.3s ease;
+    `;
+
+    const reasonsList = reasons
+      .map((r) => `<li style="margin: 6px 0; color: #ffcccc;">${r}</li>`)
+      .join("");
+
+    overlay.innerHTML = `
+      <style>
+        @keyframes phishguardFadeIn {
+          from { opacity: 0; } to { opacity: 1; }
+        }
+        @keyframes phishguardPulse {
+          0%, 100% { transform: scale(1); }
+          50% { transform: scale(1.05); }
+        }
+        #phishguard-block-box {
+          background: linear-gradient(135deg, #1a0000, #2a0a0a);
+          border: 2px solid #ff2244;
+          border-radius: 16px;
+          padding: 40px;
+          max-width: 520px;
+          width: 90%;
+          text-align: center;
+          box-shadow: 0 0 60px rgba(255, 34, 68, 0.3);
+        }
+        #phishguard-block-box h1 {
+          color: #ff2244;
+          font-size: 24px;
+          margin: 0 0 8px;
+        }
+        #phishguard-block-box .shield {
+          font-size: 64px;
+          animation: phishguardPulse 2s infinite;
+        }
+        #phishguard-block-box p {
+          color: #ffaaaa;
+          font-size: 14px;
+          margin: 12px 0;
+        }
+        #phishguard-block-box ul {
+          text-align: left;
+          font-size: 13px;
+          padding-left: 20px;
+          margin: 16px 0;
+        }
+        .phishguard-block-btn {
+          padding: 12px 28px;
+          border: none;
+          border-radius: 8px;
+          font-size: 15px;
+          font-weight: 600;
+          cursor: pointer;
+          margin: 8px;
+          transition: transform 0.15s, box-shadow 0.15s;
+        }
+        .phishguard-block-btn:hover {
+          transform: translateY(-2px);
+          box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+        }
+        .phishguard-block-btn-primary {
+          background: #ff2244;
+          color: #fff;
+        }
+        .phishguard-block-btn-secondary {
+          background: transparent;
+          color: #888;
+          border: 1px solid #444;
+          font-size: 12px;
+          padding: 8px 16px;
+        }
+      </style>
+      <div id="phishguard-block-box">
+        <div class="shield">🛡️</div>
+        <h1>⚠ Phishing Email Detected</h1>
+        <p>PhishGuard has detected dangerous content in this email.<br>
+           <strong>Do not click any links or download attachments.</strong></p>
+        <ul>${reasonsList}</ul>
+        <div>
+          <button class="phishguard-block-btn phishguard-block-btn-primary"
+                  id="phishguard-close-tab">Close Tab</button>
+          <button class="phishguard-block-btn phishguard-block-btn-secondary"
+                  id="phishguard-go-back">← Go Back to Inbox</button>
+        </div>
+        <div style="margin-top: 12px;">
+          <button class="phishguard-block-btn phishguard-block-btn-secondary" style="border:none; opacity:0.6"
+                  id="phishguard-dismiss">I understand the risk — show email anyway</button>
+        </div>
+      </div>
+    `;
+
+    document.body.appendChild(overlay);
+
+    // Close the entire tab
+    document.getElementById("phishguard-close-tab").addEventListener("click", () => {
+      closeCurrentTab();
+    });
+
+    // Go back to inbox
+    document.getElementById("phishguard-go-back").addEventListener("click", () => {
+      overlay.remove();
+      // Navigate back to inbox
+      window.location.hash = "#inbox";
+    });
+
+    // Dismiss overlay (user accepts risk)
+    document.getElementById("phishguard-dismiss").addEventListener("click", () => {
+      overlay.remove();
+    });
   }
 
   // ── MutationObserver — Re-scan when Gmail SPA navigates ─────
 
   function startObserver() {
-    console.log(`${LOG_PREFIX} Starting MutationObserver...`);
+    // MutationObserver started silently
 
     const observer = new MutationObserver((mutations) => {
       // Debounce: only scan if there are meaningful changes
@@ -442,14 +633,14 @@
   // ── Initialization ───────────────────────────────────────────
 
   function init() {
-    console.log(`${LOG_PREFIX} PhishGuard Gmail scanner initialized.`);
+    // PhishGuard Gmail scanner initialized silently
 
     // Initial scan after Gmail loads
     // Gmail loads content dynamically, so we wait a bit
     const tryInitialScan = (attempt = 0) => {
       const rows = document.querySelectorAll(SELECTORS.EMAIL_ROW);
       if (rows.length > 0) {
-        console.log(`${LOG_PREFIX} Gmail inbox detected. Starting scan...`);
+        // Gmail inbox detected — starting scan
         scanInbox();
         scanOpenEmail();
         startObserver();
@@ -457,7 +648,7 @@
         // Retry for up to ~10 seconds
         setTimeout(() => tryInitialScan(attempt + 1), 500);
       } else {
-        console.log(`${LOG_PREFIX} No inbox rows found. Observer started for future navigation.`);
+        // No inbox rows found — observer started for future navigation
         startObserver();
       }
     };

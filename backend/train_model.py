@@ -6,7 +6,7 @@ from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.model_selection import train_test_split
 from feature_extractor import get_feature_vector
 
-# ─── Paths ──────────────────────────────────────────────────
+# Paths 
 DATASETS_DIR = os.path.join(os.path.dirname(__file__), "datasets")
 URLS_CSV = os.path.join(DATASETS_DIR, "phishing_urls.csv")
 EMAILS_CSV = os.path.join(DATASETS_DIR, "emails.csv")
@@ -16,9 +16,8 @@ EMAIL_MODEL_PATH = "email_model.pkl"
 EMAIL_VECTORIZER_PATH = "email_vectorizer.pkl"
 
 
-# ═══════════════════════════════════════════════════════════
+
 #  URL Model — trained from phishing_urls.csv
-# ═══════════════════════════════════════════════════════════
 
 def load_urls_from_csv(filepath):
     """
@@ -77,10 +76,7 @@ def train_url_model():
     return model
 
 
-# ═══════════════════════════════════════════════════════════
 #  Email Model — trained from emails.csv
-# ═══════════════════════════════════════════════════════════
-
 def load_emails_from_csv(filepath):
     """
     Load emails from emails.csv.
@@ -178,10 +174,7 @@ def train_email_model():
     return model, vectorizer
 
 
-# ═══════════════════════════════════════════════════════════
 #  Extract phishing domains for the extension
-# ═══════════════════════════════════════════════════════════
-
 def extract_phishing_domains():
     """Extract unique domains from phishing URLs for use in the extension."""
     from urllib.parse import urlparse
@@ -232,9 +225,7 @@ def generate_phishing_domains_js():
     print(f"  Updated KNOWN_PHISHING_DOMAINS with {len(domains)} domains from dataset.")
 
 
-# ═══════════════════════════════════════════════════════════
 #  Main Entry Point
-# ═══════════════════════════════════════════════════════════
 
 def train_and_save():
     print("=" * 60)

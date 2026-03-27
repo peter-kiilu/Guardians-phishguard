@@ -19,7 +19,7 @@ function injectWarningBanner(data) {
         Risk Score: ${data.confidence}% | ML Confidence: ${(data.ml_probability * 100).toFixed(1)}%
       </div>
       <div class="phishguard-actions">
-        <button id="phishguard-ignore" class="phishguard-btn">Ignore Warning</button>
+        <button id="phishguard-close-tab" class="phishguard-btn" style="background:#ff2244;color:#fff;">Close Tab</button>
         <button id="phishguard-close" class="phishguard-btn phishguard-btn-secondary">Dismiss</button>
       </div>
     </div>
@@ -27,9 +27,8 @@ function injectWarningBanner(data) {
 
   document.body.prepend(banner);
 
-  document.getElementById("phishguard-ignore").addEventListener("click", () => {
-    // Optionally log user's choice or just hide
-    banner.style.display = "none";
+  document.getElementById("phishguard-close-tab").addEventListener("click", () => {
+    chrome.runtime.sendMessage({ action: "closeTab" });
   });
 
   document.getElementById("phishguard-close").addEventListener("click", () => {

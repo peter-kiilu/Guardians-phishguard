@@ -59,3 +59,10 @@ async function analyzeUrl(tabId, url) {
     console.error("PhishGuard Background Error:", error);
   }
 }
+
+// Listen for messages from content scripts
+chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
+  if (request.action === "closeTab" && sender.tab) {
+    chrome.tabs.remove(sender.tab.id);
+  }
+});
