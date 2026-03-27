@@ -60,7 +60,7 @@ body {
   line-height: 1.6;
 }
 
-/* --- MATRIX RAIN CANVAS --- */
+/*  MATRIX RAIN CANVAS */
 #matrix-canvas {
   position: fixed;
   top: 0;
@@ -99,9 +99,7 @@ body {
   padding: 2rem 1.5rem;
 }
 
-/* ============================================================
-   HEADER
-   ============================================================ */
+/*Header */
 .header {
   display: flex;
   justify-content: space-between;
